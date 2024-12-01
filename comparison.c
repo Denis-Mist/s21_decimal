@@ -51,7 +51,7 @@ int main() {
     printf("result:\n");
     printf("sign: %d, scale: %d\n", get_sign(res), get_scale(res));
     s21_print_decimal(res);
-    if (strcmp("11111111111111111111111111111111", "1111111111111111111111111111111") == 0) printf("Success\n");
+    //if (strcmp("11111111111111111111111111111111", "1111111111111111111111111111111") == 0) printf("Success\n");
     return 0;
 }
 
