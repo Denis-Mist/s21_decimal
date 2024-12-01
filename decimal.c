@@ -107,8 +107,8 @@ int get_sign(s21_decimal num) {
 int get_scale(s21_decimal num) {
     int scale = 0;
     for (int i = 16, j = 0; i < 24; i++, j++) {
-        int temp = (num.bits[3] >> i) & 1;
-        if (temp == 1) scale += (int)pow(2, j);
+        int bit = (num.bits[3] >> i) & 1;
+        if (bit == 1) scale += (int)pow(2, j);
     }
     return scale;
 }
