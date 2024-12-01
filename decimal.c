@@ -68,8 +68,8 @@ int s21_is_less(s21_decimal num1, s21_decimal num2) {
     else if (get_sign(num1) > get_sign(num2)) res = 0;
     int compared = 0;
     for (int i = 2; i >= 0 && res == -1; i--) {
-        if (num1.bits[i] < 0 && num2.bits >= 0) res = 0;
-        else if (num1.bits[i] >= 0 && num2.bits < 0) res = 1;
+        if (num1.bits[i] < 0 && num2.bits[i] >= 0) res = 0;
+        else if (num1.bits[i] >= 0 && num2.bits[i] < 0) res = 1;
         else if (num1.bits[i] < num2.bits[i]) res = 1;
         else if (num1.bits[i] > num2.bits[i]) res = 0;
     }
