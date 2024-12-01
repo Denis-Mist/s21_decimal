@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 typedef struct 
 {
@@ -19,25 +20,38 @@ int s21_negate(s21_decimal value, s21_decimal *result);
 void set_sign(s21_decimal *num, int sign);
 void set_scale(s21_decimal *num, int scale);
 void decimal_shift(s21_decimal *num, int shift);
-void dec_summ(s21_decimal one_shift, s21_decimal three_shift, s21_decimal *result);
+void s21_add(s21_decimal one_shift, s21_decimal three_shift, s21_decimal *result);
 void increase_scale(s21_decimal *num, int delta);
 void s21_print_decimal(s21_decimal decimal);
+int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 
 int main() {
-    s21_decimal num = {18, 5, 0, 0};
+    s21_decimal num1 = {2147483647, 2147483647, 2147483647, 0};
+    s21_decimal num2 = {2, 0, 0, 0};
     s21_decimal res = { 0 };
 
     // printf("sign: %d, scale: %d\n", get_sign(num), get_scale(num));
     // set_scale(&num, 15);
     // set_sign(&num, 1);
     // printf("sign: %d, scale: %d\n", get_sign(num), get_scale(num));
-    set_scale(&num, 3);
-    set_sign(&num, 1);
-    printf("sign: %d, scale: %d\n", get_sign(num), get_scale(num));
-    s21_print_decimal(num);
-    increase_scale(&num, 4);
-    printf("sign: %d, scale: %d\n", get_sign(num), get_scale(num));
-    s21_print_decimal(num);
+    // set_scale(&num, 3);
+    // set_sign(&num, -1);
+    // printf("sign: %d, scale: %d\n", get_sign(num), get_scale(num));
+    // s21_print_decimal(num);
+    // increase_scale(&num, 4);
+    // printf("sign: %d, scale: %d\n", get_sign(num), get_scale(num));
+    // s21_print_decimal(num);
+    set_scale(&num1, 10);
+    set_scale(&num2, 5);
+    printf("value_1: ");
+    s21_print_decimal(num1);
+    printf("value_2: ");
+    s21_print_decimal(num2);
+    s21_mul(num1, num2, &res);
+    printf("result:\n");
+    printf("sign: %d, scale: %d\n", get_sign(res), get_scale(res));
+    s21_print_decimal(res);
+    if (strcmp("11111111111111111111111111111111", "1111111111111111111111111111111") == 0) printf("Success\n");
     return 0;
 }
 
@@ -148,7 +162,7 @@ void increase_scale(s21_decimal *num, int delta) {
         s21_decimal three_shift = result;
         decimal_shift(&one_shift, 1);
         decimal_shift(&three_shift, 3);
-        dec_summ(one_shift, three_shift, &result);
+        s21_add(one_shift, three_shift, &result);
     }
     int scale = get_scale(*num);
     *num = result;
@@ -173,13 +187,15 @@ void decimal_shift(s21_decimal *num, int shift) {
     num->bits[2] |= buffer2;
 }
 
-void dec_summ(s21_decimal one_shift, s21_decimal three_shift, s21_decimal *result) {
+
+// Целое + целое
+void s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     int buffer = 0;
     for (int i = 0; i < 3; i++) {
         result->bits[i] = 0;
         for (int j = 0; j <= 31; j++) {
-            int num1 = (one_shift.bits[i] >> j) & 1;
-            int num2 = (three_shift.bits[i] >> j) & 1;
+            int num1 = (value_1.bits[i] >> j) & 1;
+            int num2 = (value_2.bits[i] >> j) & 1;
             if ((num1 + num2 + buffer) == 3) {
                 result->bits[i] |= (1 << j);
                 buffer = 1;
@@ -200,6 +216,31 @@ void s21_print_decimal(s21_decimal decimal) {
         }
     }
     printf("\n");
+}
+
+// Лучшее на данный момент (умножение)
+int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
+    s21_decimal buffer_dec = { 0 };
+    set_scale(result, get_scale(value_1) + get_scale(value_2));
+    if ((get_sign(value_1) == -1 && get_sign(value_2) == 1) || (get_sign(value_1) == 1 && get_sign(value_2) == -1)) set_sign(result, -1);
+    // берем каждый бит value_2
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j <= 31; j++) {
+            int bit2 = (value_2.bits[i] >> j) & 1;
+            s21_decimal buffer_line = { 0 };
+            // берем каждый бит value_1
+            for (int m = 0; m < 3 && bit2 == 1; m++) {
+                for (int n = 0; n <= 31; n++) {
+                    int bit1 = (value_1.bits[m] >> n) & 1;
+                    buffer_line.bits[m] |= (bit1 << n);
+                }
+            }
+            decimal_shift(&buffer_line, j + 31*i);
+            s21_add(buffer_line, buffer_dec, result);
+            buffer_dec = *result;
+        }
+    }
+    *result = buffer_dec;
 }
 
 // int bits_cmp(int num1, int num2, int scale1, int scale2) {
