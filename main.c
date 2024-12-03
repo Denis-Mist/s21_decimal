@@ -22,13 +22,14 @@ void s21_set_sign(s21_decimal *decimal, int sign) {
 }
 
 void s21_print_decimal(s21_decimal decimal) {
-    for (int i = 3; i >= 0; i--) {
-        for (int j = 31; j >= 0; j--) {
-            printf("%d", (decimal.bits[i] >> j) & 1);
-        }
-        printf(" ");
-    }
-    printf("\n");
+    // for (int i = 3; i >= 0; i--) {
+    //     for (int j = 31; j >= 0; j--) {
+    //         printf("%d", (decimal.bits[i] >> j) & 1);
+    //     }
+    //     printf(" ");
+    // }
+    // printf("\n");
+    printf("%d %d %d %d\n",decimal.bits[0],decimal.bits[1],decimal.bits[2],decimal.bits[3]);
 }
 
 int s21_from_int_to_decimal(int src, s21_decimal *dst) {
@@ -132,28 +133,93 @@ int s21_from_decimal_to_float(s21_decimal src, float *dst) {
     return exit_code;
 }
 
-int main(void) {
-    s21_decimal num1;
-    s21_decimal num2;
-    s21_decimal num3;
+int s21_floor(s21_decimal value, s21_decimal *result){
+    int exit_code = OK;
+    s21_clear_decimal(result);
 
-    // s21_from_int_to_decimal(-15, &num1);
-    // s21_from_int_to_decimal(INT_MIN, &num2);
-    // s21_from_int_to_decimal(INT_MAX, &num3);
+    int sign = s21_get_sign(value); // Получаем знак числа
+    int scale = (value.bits[3] >> 16) & 0xFF; // Получаем степень
+    int integer_part = value.bits[1]; // Целая часть
+    int fractional_part = value.bits[0]; // Дробная часть
 
-    float dst1;
+    if (sign == 0){
+        result->bits[1] = integer_part;
+    }else{
+        if (fractional_part > 0) {
+            // Если есть дробная часть, то нужно округлить вниз
+            result->bits[1] = integer_part + 1; // Увеличиваем целую часть
+        } else {
+            // Если дробной части нет, просто копируем целую часть
+            result->bits[1] = integer_part;
+        }
+    }
 
-    // s21_from_decimal_to_int(num3,&dst1);
-    // printf("%d",dst1);
+    s21_set_sign(result,sign);
 
-    s21_from_float_to_decimal(-15.34,&num1);
-    s21_from_float_to_decimal(0.231,&num2);
+    result->bits[3] = (scale & 0xFF) << 16; 
 
-    s21_from_decimal_to_float(num2,&dst1);
-    printf("%f",dst1);
-    
-    // s21_print_decimal(num1);
-    // s21_print_decimal(num2);
-    // s21_print_decimal(num3);
+    return exit_code;
+
+}
+
+int s21_round(s21_decimal value, s21_decimal *result) {
+    int exit_code = OK;
+    s21_clear_decimal(result); 
+
+    int sign = s21_get_sign(value); // Получаем знак числа
+    int scale = (value.bits[3] >> 16) & 0xFF; // Получаем степень
+    int integer_part = value.bits[1]; // Целая часть
+    int fractional_part = value.bits[0]; // Дробная часть
+
+    // Если есть дробная часть
+    if (scale > 0) {
+        // Приведение дробной части к целому числу
+        int threshold = (int)pow(10, scale - 1); 
+        if (fractional_part >= threshold) {
+            integer_part += 1;
+        }
+    }
+
+    // Устанавливаем целую часть в результат
+    result->bits[1] = integer_part;
+
+    // Устанавливаем знак результата
+    s21_set_sign(result, sign);
+
+    // Устанавливаем степень результата
+    result->bits[3] = (scale & 0xFF) << 16; // Устанавливаем только степень
+
+    return exit_code;
+}
+
+int main() {
+    s21_decimal decimal1, decimal2, decimal3, decimal4, result;
+    s21_from_float_to_decimal(3.7, &decimal1);
+    s21_from_float_to_decimal(-3.7, &decimal2);
+    s21_from_float_to_decimal(3.5, &decimal3);
+    s21_from_float_to_decimal(-3.5, &decimal4);
+
+    printf("Testing s21_round function:\n");
+
+    // Тестирование положительного числа
+    s21_round(decimal1, &result);
+    printf("s21_round(3.7) = ");
+    s21_print_decimal(result);
+
+    // Тестирование отрицательного числа
+    s21_round(decimal2, &result);
+    printf("s21_round(-3.7) = ");
+    s21_print_decimal(result);
+
+    // Тестирование округления до целого
+    s21_round(decimal3, &result);
+    printf("s21_round(3.5) = ");
+    s21_print_decimal(result);
+
+    // Тестирование округления до целого отрицательного
+    s21_round(decimal4, &result);
+    printf("s21_round(-3.5) = ");
+    s21_print_decimal(result);
+
     return 0;
 }
