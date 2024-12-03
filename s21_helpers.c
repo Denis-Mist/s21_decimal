@@ -13,6 +13,10 @@ void s21_set_sign(s21_decimal *decimal, int sign) {
     }
 }
 
+int s21_get_sign(s21_decimal src) {
+    return (src.bits[3] >> 31) & 1;
+}
+
 void s21_print_decimal(s21_decimal decimal) {
     for (int i = 3; i >= 0; i--) {
         for (int j = 31; j >= 0; j--) {

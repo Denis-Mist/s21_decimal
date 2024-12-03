@@ -56,3 +56,16 @@ int s21_from_float_to_decimal(float src, s21_decimal *dst) {
 
     return exit_code;
 }
+
+int s21_from_decimal_to_int(s21_decimal src, int *dst){
+    int exit_code = OK;
+
+    if (!dst){
+        exit_code = ERROR;
+    }else{
+        *dst = 0;
+        int sign = s21_get_sign(src) ? -1 : 1;
+        *dst = sign * src.bits[0];
+    }
+    return exit_code;
+}
