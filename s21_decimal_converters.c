@@ -69,3 +69,30 @@ int s21_from_decimal_to_int(s21_decimal src, int *dst){
     }
     return exit_code;
 }
+
+int s21_from_decimal_to_float(s21_decimal src, float *dst) {
+    int exit_code = OK;
+
+    if (!dst) {
+        exit_code = ERROR;
+    } else {
+        *dst = 0.0f; // Сброс значения
+        int sign = s21_get_sign(src) ? -1 : 1; 
+        int scale = (src.bits[3] >> 16) & 0xFF;
+        
+        // Получаем целую часть
+        int int_part = src.bits[1];
+        int fractional_part = src.bits[0]; 
+
+        *dst = (float)int_part;
+
+        if (scale > 0) {
+            float fractional_as_float = (float)fractional_part / pow(10, scale);
+            *dst += fractional_as_float; 
+        }
+
+        *dst *= sign;
+    }
+
+    return exit_code;
+}
