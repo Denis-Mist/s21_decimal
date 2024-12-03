@@ -25,42 +25,49 @@ void increase_scale(s21_decimal *num, int delta);
 void decrease_scale(s21_decimal *num, int delta);
 void s21_print_decimal(s21_decimal decimal);
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
-void s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
+int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 void set_same_scale(s21_decimal *tmp1, s21_decimal *tmp2);
 int check_for_verylow(s21_decimal *num, int new_scale);
+void summ_or_sub(s21_decimal value_1, s21_decimal value_2, int *res_sign, s21_decimal *tmp1, s21_decimal *tmp2, s21_decimal *result, int *res, int *summ);
+int check_for_zero(s21_decimal num);
 
 int main() {
-    s21_decimal num1 = {1, 1, 0, 0};
-    s21_decimal num2 = {1, 1, 0, 0};
+    s21_decimal num1 = {590, 500, -1, 0};
+    s21_decimal num2 = {600, 500, -1, 0};
     s21_decimal res = { 0 };
     
-    // set_scale(&num1, 10);
     printf("value_1: ");
-    set_scale(&num1, 3);
+    set_scale(&num1, 0);
+    set_sign(&num1, 1);
+    printf("sign: %d, scale: %d\n", get_sign(num1), get_scale(num1));
     s21_print_decimal(num1);
     printf("value_2: ");
-    set_scale(&num2, 2);
+    set_scale(&num2, 0);
+    set_sign(&num2, 1);
+    printf("sign: %d, scale: %d\n", get_sign(num2), get_scale(num2));
     s21_print_decimal(num2);
-    // printf("%d\n", s21_is_equal(num1, num2));
+    //printf("%d\n", s21_is_equal(num1, num2));
     // set_scale(&num1, 15);
     // decrease_scale(&num1, 1);
-    int fault = s21_mul(num1, num2, &res);
+    int fault = s21_sub(num1, num2, &res);
+    //increase_scale(&num2, 28);
     printf("result: %d\n", fault);
     printf("sign: %d, scale: %d\n", get_sign(res), get_scale(res));
-	//printf("%d\n", s21_is_equal(num1, num2));
+	//printf("%d\n", s21_is_greater_or_equal(num1, num2));
     s21_print_decimal(res);
 
-    if (strcmp("000000000000000000000000000000000", "100000000000000000000000000000010") == 0) printf("Success\n");
+    //if (strcmp("1111111111111111111111111111111100000000000000000000000000000000", "111111111111111111111111111111110000000000000000000000000000000") == 0) printf("Success\n");
     return 0;
 }
 
 int s21_is_equal(s21_decimal num1, s21_decimal num2) {
     int res = 1;
-    if (get_sign(num1) != get_sign(num2)) res = 0;
+    if (check_for_zero(num1) && check_for_zero(num2)) res = 1;
+    else if (get_sign(num1) != get_sign(num2)) res = 0;
     s21_decimal tmp1 = num1;
     s21_decimal tmp2 = num2;
-    if (get_scale(tmp1) != get_scale(tmp2)) set_same_scale(&tmp1, &tmp2);
-    for (int i = 0; i < 4 && res == 1; i++) {
+    if ((get_scale(tmp1) != get_scale(tmp2)) && res == 1) set_same_scale(&tmp1, &tmp2);
+    for (int i = 0; i < 3 && res == 1; i++) {
         if (((tmp1.bits[i] << 31) & 1) != ((tmp1.bits[i] << 31) & 1)) res = 0;
         else if (tmp1.bits[i] != tmp2.bits[i]) res = 0;
     }
@@ -75,11 +82,12 @@ int s21_is_not_equal(s21_decimal num1, s21_decimal num2) {
 
 int s21_is_less(s21_decimal num1, s21_decimal num2) {
     int res = -1;
-    if (get_sign(num1) < get_sign(num2)) res = 1;
+    if (check_for_zero(num1) && check_for_zero(num2)) res = 0;
+    else if (get_sign(num1) < get_sign(num2)) res = 1;
     else if (get_sign(num1) > get_sign(num2)) res = 0;
     s21_decimal tmp1 = num1;
     s21_decimal tmp2 = num2;
-    if (get_scale(tmp1) != get_scale(tmp2)) set_same_scale(&tmp1, &tmp2);
+    if (get_scale(tmp1) != get_scale(tmp2) && res == -1) set_same_scale(&tmp1, &tmp2);
     for (int i = 2; i >= 0 && res == -1; i--) {
 		if (((tmp1.bits[i] << 31) & 1) > ((tmp1.bits[i] << 31) & 1)) res = 0;
 		else if (((tmp1.bits[i] << 31) & 1) < ((tmp1.bits[i] << 31) & 1)) res = 1;
@@ -207,34 +215,60 @@ void decimal_shift_right(s21_decimal *num, int shift) {
     num->bits[0] |= buffer2;
 }
 
-// Без учета отрицательных и ошибок
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     int res = 0;
-    int buffer = 0;
     s21_decimal tmp1 = value_1;
     s21_decimal tmp2 = value_2;
-    set_same_scale(&tmp1, &tmp2);
-    for (int i = 0; i < 3; i++) {
-        result->bits[i] = 0;
-        for (int j = 0; j <= 31; j++) {
-            int num1 = (value_1.bits[i] >> j) & 1;
-            int num2 = (value_2.bits[i] >> j) & 1;
-            if ((num1 + num2 + buffer) == 3) {
-                result->bits[i] |= (1 << j);
-                buffer = 1;
-            } else if ((num1 + num2 + buffer) == 2) {
-                buffer = 1;
-            } else if ((num1 + num2 + buffer) == 1) {
-                result->bits[i] |= (1 << j);
-                buffer = 0;
-            } else buffer = 0;
+    if (get_sign(value_1) == get_sign(value_2)) {
+        int buffer = 0;
+        set_same_scale(&tmp1, &tmp2);
+        for (int i = 0; i < 3; i++) {
+            result->bits[i] = 0;
+            for (int j = 0; j <= 31; j++) {
+                int num1 = (value_1.bits[i] >> j) & 1;
+                int num2 = (value_2.bits[i] >> j) & 1;
+                if ((num1 + num2 + buffer) == 3) {
+                    result->bits[i] |= (1 << j);
+                    buffer = 1;
+                } else if ((num1 + num2 + buffer) == 2) {
+                    buffer = 1;
+                } else if ((num1 + num2 + buffer) == 1) {
+                    result->bits[i] |= (1 << j);
+                    buffer = 0;
+                } else buffer = 0;
+            }
+        }
+        set_scale(result, get_scale(tmp1));
+        if (buffer == 1 && get_scale(*result) > 0) {
+            decrease_scale(&tmp1, 1);
+            decrease_scale(&tmp2, 1);
+            s21_add(tmp1, tmp2, result);
+        } else if (buffer == 1 && get_scale(*result) == 0 && get_sign(value_1) == 1) res = 1;
+        else if (buffer == 1 && get_scale(*result) == 0 && get_sign(value_1) == -1) res = 2;
+        set_sign(result, get_sign(value_1));
+    } else {
+        int sign1 = get_sign(tmp1);
+        int sign2 = get_sign(tmp2);
+        set_sign(&tmp1, 1);
+        set_sign(&tmp2, 1);
+        if (s21_is_greater_or_equal(tmp1, tmp2)) {
+            if (sign1 > sign2) {
+                res = s21_sub(tmp1, tmp2, result);
+                set_sign(result, 1);
+            } else {
+                res = s21_sub(tmp2, tmp1, result);
+                set_sign(result, -1);
+            }
+        } else {
+           if (sign1 > sign2) {
+                res = s21_sub(tmp2, tmp1, result);
+                set_sign(result, -1);
+            } else {
+                res = s21_sub(tmp1, tmp2, result);
+                set_sign(result, 1);
+            }
         }
     }
-    set_scale(result, get_scale(tmp1));
-    if (buffer == 1 && get_scale(*result) > 0) {
-        decimal_shift_right(result, 1);
-        result->bits[2] |= (1 << 31);
-    } else if (buffer == 1 && get_scale(*result) == 0) res = 1;
     return res;
 }
 
@@ -257,13 +291,11 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     s21_decimal tmp2 = value_2;
     int new_scale = get_scale(value_1) + get_scale(value_2);
     if ((get_sign(value_1) == -1 && get_sign(value_2) == 1) || (get_sign(value_1) == 1 && get_sign(value_2) == -1)) set_sign(result, -1);
-    // берем каждый бит value_2
     for (int i = 0; i < 3 && res == 0; i++) {
         for (int j = 0; j <= 31 && res == 0; j++) {
             int bit2 = (value_2.bits[i] >> j) & 1;
             s21_decimal buffer_line = { 0 };
             if (bit2 == 1) shift = 0;
-            // берем каждый бит value_1
             for (int m = 0; m < 3 && bit2 == 1; m++) {
                 for (int n = 0; n <= 31; n++) {
                     int bit1 = (value_1.bits[m] >> n) & 1;
@@ -271,17 +303,16 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
                 }
             }
             int k = 0;
-            while (k <= (j + 31*i) && !((buffer_line.bits[2] << 31) & 1)) {
+            while (k < (j + 31*i) && !((buffer_line.bits[2] << 31) & 1) && bit2 == 1) {
                 decimal_shift_left(&buffer_line, 1);
                 k++;
             }
-            if (k <= (j + 31*i)) {
+            if (k < (j + 31*i) && bit2 == 1) {
                 shift = (j + 31*i) - k - summ_shift;
-                if (shift < 0) shift = 0;
                 summ_shift += shift;
                 decimal_shift_right(&buffer_dec, shift);
             }
-            if(s21_add(buffer_line, buffer_dec, result)) new_scale--;
+            s21_add(buffer_line, buffer_dec, result);
             buffer_dec = *result;
         }
     }
@@ -335,14 +366,20 @@ void decrease_scale(s21_decimal *num, int delta) {
     set_scale(num, get_scale(*num) - delta);
 }
 
-// Большее целое - меньшее целое
-void s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
+int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
+    int res = 0;
     int buffer = 0;
-    for (int i = 0; i < 3; i++) {
+    int summ = 0;
+    int res_sign = 0;
+    s21_decimal tmp1 = { 0 };
+    s21_decimal tmp2 = { 0 };
+    summ_or_sub(value_1, value_2, &res_sign, &tmp1, &tmp2, result, &res, &summ);
+    if (!summ) set_same_scale(&tmp1, &tmp2);
+    for (int i = 0; i < 3 && !summ; i++) {
         result->bits[i] = 0;
         for (int j = 0; j <= 31; j++) {
-            int num1 = ((value_1.bits[i] >> j) & 1);
-            int num2 = ((value_2.bits[i] >> j) & 1);
+            int num1 = ((tmp1.bits[i] >> j) & 1);
+            int num2 = ((tmp2.bits[i] >> j) & 1);
             if ((num1 - num2 - buffer) == 1) {
                 result->bits[i] |= (1 << j);
                 buffer = 0;
@@ -356,6 +393,9 @@ void s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
             }
         }
     }
+    if (!summ) set_scale(result, get_scale(tmp1));
+    set_sign(result, res_sign);
+    return res;
 }
 
 void set_same_scale(s21_decimal *tmp1, s21_decimal *tmp2) {
@@ -389,4 +429,55 @@ int check_for_verylow(s21_decimal *num, int delta_scale) {
 		}
 	}
 	return verylow;
+}
+
+// Для вычитания
+void summ_or_sub(s21_decimal value_1, s21_decimal value_2, int *res_sign, s21_decimal *tmp1, s21_decimal *tmp2, s21_decimal *result, int *res, int *summ) {
+    if (!((value_1.bits[3] >> 31) & 1) && !((value_2.bits[3] >> 31) & 1) && s21_is_greater_or_equal(value_1,value_2)) {
+        *res_sign = 1;
+        *tmp1 = value_1;
+        *tmp2 = value_2;
+    } else if (!((value_1.bits[3] >> 31) & 1) && !((value_2.bits[3] >> 31) & 1) && !s21_is_greater_or_equal(value_1,value_2)) {
+        *res_sign = -1;
+        *tmp1 = value_2;
+        *tmp2 = value_1;
+    } else if (((value_1.bits[3] >> 31) & 1) && !((value_2.bits[3] >> 31) & 1)) {
+        *tmp1 = value_1;
+        *tmp2 = value_2;
+        set_sign(tmp1, 1);
+        *res_sign = -1;
+        *res = s21_add(*tmp1, *tmp2, result);
+        if (*res == 1) *res = 2;
+        *summ = 1;
+    } else if (!((value_1.bits[3] >> 31) & 1) && ((value_2.bits[3] >> 31) & 1)) {
+        *tmp1 = value_1;
+        *tmp2 = value_2;
+        set_sign(tmp2, 1);
+        *res_sign = 1;
+        *res = s21_add(*tmp1, *tmp2, result);
+        *summ = 1;
+    } else if (((value_1.bits[3] >> 31) & 1) && ((value_2.bits[3] >> 31) & 1)) {
+        *tmp1 = value_1;
+        *tmp2 = value_2;
+        set_sign(tmp1, 1);
+        set_sign(tmp2, 1);
+        if (s21_is_greater_or_equal(*tmp1, *tmp2)) {
+            *res_sign = -1;
+        } else {
+            *res_sign = 1;
+            s21_decimal temp = *tmp1;
+            tmp1 = tmp2;
+            *tmp2 = temp;
+        }
+    }
+}
+
+int check_for_zero(s21_decimal num) {
+    int res = 1;
+    for (int i = 0; i < 3 && res; i++) {
+        for (int j = 0; j < 32 && res; j++) {
+            if (((num.bits[i] >> j) & 1) == 1) res = 0;
+        }
+    }
+    return res;
 }
