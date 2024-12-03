@@ -58,3 +58,24 @@ int s21_round(s21_decimal value, s21_decimal *result) {
 
     return exit_code;
 }
+
+int s21_truncate(s21_decimal value, s21_decimal *result) {
+    int exit_code = OK;
+    s21_clear_decimal(result); // Очистка результата
+
+    // Получение знака и степени
+    int sign = s21_get_sign(value); // Получаем знак числа
+    int scale = (value.bits[3] >> 16) & 0xFF; // Получаем степень
+    int integer_part = value.bits[1]; // Целая часть
+
+    // Устанавливаем целую часть в результат
+    result->bits[1] = integer_part;
+
+    // Устанавливаем знак результата
+    s21_set_sign(result, sign);
+
+    // Устанавливаем степень результата в 0, так как дробная часть отбрасывается
+    result->bits[3] = (0 & 0xFF) << 16; // Устанавливаем степень в 0
+
+    return exit_code;
+}
