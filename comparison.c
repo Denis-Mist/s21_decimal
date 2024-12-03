@@ -30,16 +30,16 @@ void set_same_scale(s21_decimal *tmp1, s21_decimal *tmp2);
 int check_for_verylow(s21_decimal *num, int new_scale);
 
 int main() {
-    s21_decimal num1 = {2000, 0, 0, 0};
-    s21_decimal num2 = {5000, 0, 0, 0};
+    s21_decimal num1 = {200, 0, -1, 0};
+    s21_decimal num2 = {500, 0, -1, 0};
     s21_decimal res = { 0 };
     
     // set_scale(&num1, 10);
     printf("value_1: ");
-    set_scale(&num1, 14);
+    set_scale(&num1, 0);
     s21_print_decimal(num1);
     printf("value_2: ");
-    set_scale(&num2, 19);
+    set_scale(&num2, 5);
     s21_print_decimal(num2);
     // printf("%d\n", s21_is_equal(num1, num2));
     // set_scale(&num1, 15);
@@ -250,6 +250,7 @@ void s21_print_decimal(s21_decimal decimal) {
 // Без обработки ошибок
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     int res = 0;
+    int summ_shift = 0;
     int shift = 0;
     s21_decimal buffer_dec = { 0 };
     s21_decimal tmp1 = value_1;
@@ -275,17 +276,19 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
                 k++;
             }
             if (shift == 0 && k < (j + 31*i)) {
-                shift = (j + 31*i) - k;
+                shift = (j + 31*i) - k - summ_shift;
+                summ_shift += shift;
                 decimal_shift_right(&buffer_dec, (j + 31*i) - k);
             } else if (k < (j + 31*i)) {
                 shift++;
                 decimal_shift_right(&buffer_dec, 1);
             }
-            s21_add(buffer_line, buffer_dec, result);
+            if(s21_add(buffer_line, buffer_dec, result)) new_scale--;
             buffer_dec = *result;
         }
     }
     if (new_scale > 28 && res == 0 && check_for_verylow(&buffer_dec, new_scale - 28)) res = 2;
+    else if (new_scale < 0) res = 1;
     if (new_scale <= 28) set_scale(&buffer_dec, new_scale);
     else set_scale(&buffer_dec, 28);
     *result = buffer_dec; 
