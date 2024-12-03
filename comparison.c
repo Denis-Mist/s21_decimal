@@ -30,16 +30,16 @@ void set_same_scale(s21_decimal *tmp1, s21_decimal *tmp2);
 int check_for_verylow(s21_decimal *num, int new_scale);
 
 int main() {
-    s21_decimal num1 = {200, 0, -1, 0};
-    s21_decimal num2 = {500, 0, -1, 0};
+    s21_decimal num1 = {1, 1, 0, 0};
+    s21_decimal num2 = {1, 1, 0, 0};
     s21_decimal res = { 0 };
     
     // set_scale(&num1, 10);
     printf("value_1: ");
-    set_scale(&num1, 0);
+    set_scale(&num1, 3);
     s21_print_decimal(num1);
     printf("value_2: ");
-    set_scale(&num2, 5);
+    set_scale(&num2, 2);
     s21_print_decimal(num2);
     // printf("%d\n", s21_is_equal(num1, num2));
     // set_scale(&num1, 15);
@@ -50,7 +50,7 @@ int main() {
 	//printf("%d\n", s21_is_equal(num1, num2));
     s21_print_decimal(res);
 
-    //if (strcmp("", "") == 0) printf("Success\n");
+    if (strcmp("000000000000000000000000000000000", "100000000000000000000000000000010") == 0) printf("Success\n");
     return 0;
 }
 
@@ -271,17 +271,15 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
                 }
             }
             int k = 0;
-            while (k < (j + 31*i) && !((buffer_line.bits[2] << 31) & 1)) {
+            while (k <= (j + 31*i) && !((buffer_line.bits[2] << 31) & 1)) {
                 decimal_shift_left(&buffer_line, 1);
                 k++;
             }
-            if (shift == 0 && k < (j + 31*i)) {
+            if (k <= (j + 31*i)) {
                 shift = (j + 31*i) - k - summ_shift;
+                if (shift < 0) shift = 0;
                 summ_shift += shift;
-                decimal_shift_right(&buffer_dec, (j + 31*i) - k);
-            } else if (k < (j + 31*i)) {
-                shift++;
-                decimal_shift_right(&buffer_dec, 1);
+                decimal_shift_right(&buffer_dec, shift);
             }
             if(s21_add(buffer_line, buffer_dec, result)) new_scale--;
             buffer_dec = *result;
