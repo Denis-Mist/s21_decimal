@@ -30,32 +30,40 @@ void set_same_scale(s21_decimal *tmp1, s21_decimal *tmp2);
 int check_for_verylow(s21_decimal *num, int new_scale);
 void summ_or_sub(s21_decimal value_1, s21_decimal value_2, int *res_sign, s21_decimal *tmp1, s21_decimal *tmp2, s21_decimal *result, int *res, int *summ);
 int check_for_zero(s21_decimal num);
+int s21_truncate(s21_decimal value, s21_decimal *result);
+int s21_floor(s21_decimal value, s21_decimal *result);
+int s21_from_decimal_to_int(s21_decimal src, int *dst);
+int s21_from_float_to_decimal(float src, s21_decimal *dst);
+int s21_from_decimal_to_float(s21_decimal src, float *dst);
+int get_length_of_int(int num);
 
 int main() {
-    s21_decimal num1 = {590, 500, -1, 0};
-    s21_decimal num2 = {600, 500, -1, 0};
+    s21_decimal num1 = {799900001, 0, 0, 0};
+    s21_decimal num2 = {600, 0, 0, 0};
     s21_decimal res = { 0 };
-    
+    float result = (float)-5600000.456;
+    //int result = 0;
     printf("value_1: ");
-    set_scale(&num1, 0);
-    set_sign(&num1, 1);
+    set_scale(&num1, 7);
+    set_sign(&num1, -1);
     printf("sign: %d, scale: %d\n", get_sign(num1), get_scale(num1));
     s21_print_decimal(num1);
-    printf("value_2: ");
-    set_scale(&num2, 0);
-    set_sign(&num2, 1);
-    printf("sign: %d, scale: %d\n", get_sign(num2), get_scale(num2));
-    s21_print_decimal(num2);
+    // printf("value_2: ");
+    // set_scale(&num2, 0);
+    // set_sign(&num2, 1);
+    // printf("sign: %d, scale: %d\n", get_sign(num2), get_scale(num2));
+    //s21_print_decimal(num2);
     //printf("%d\n", s21_is_equal(num1, num2));
     // set_scale(&num1, 15);
     // decrease_scale(&num1, 1);
-    int fault = s21_sub(num1, num2, &res);
+    int fault = s21_truncate(num1, &res);
     //increase_scale(&num2, 28);
     printf("result: %d\n", fault);
     printf("sign: %d, scale: %d\n", get_sign(res), get_scale(res));
-	//printf("%d\n", s21_is_greater_or_equal(num1, num2));
+	printf("%d\n", s21_is_greater_or_equal(num1, num2));
     s21_print_decimal(res);
-
+    // float test = (float)5600000.456;
+    //printf("%f\n", result);
     //if (strcmp("1111111111111111111111111111111100000000000000000000000000000000", "111111111111111111111111111111110000000000000000000000000000000") == 0) printf("Success\n");
     return 0;
 }
@@ -342,11 +350,11 @@ void decrease_scale(s21_decimal *num, int delta) {
             j--;
             if (j % 31 == 0) i--;
         }
-		if (buffer1.bits[0] == 0 && buffer1.bits[1] == 0 && buffer1.bits[2] == 0) zero = 1;
+		if (buffer1.bits[0] == 0 && buffer1.bits[1] == 0 && buffer1.bits[2] == 0 && !(((buffer1.bits[0]) >> 31) & 1) && !(((buffer1.bits[1]) >> 31) & 1) && !(((buffer1.bits[1]) >> 31) & 1)) zero = 1;
 		else zero = 0;
         // Деление в столбик
         while (j >= 0 && zero == 0) {
-            if (buffer1.bits[0] >= del.bits[0]) {
+            if (s21_is_greater_or_equal(buffer1, del)) {
                 res.bits[0] |= 1;
                 s21_sub(buffer1, del, &buffer2);
                 buffer1 = buffer2;
@@ -357,6 +365,10 @@ void decrease_scale(s21_decimal *num, int delta) {
                 j--;
                 if (j % 31 == 0) i--;
                 if (s21_is_less(buffer1, del) && j != 0) decimal_shift_left(&res, 1);
+                else if (s21_is_greater_or_equal(buffer1, del) && j == -1) {
+                    decimal_shift_left(&res, 1);
+                    res.bits[0] |= 1;
+                }
             }
         }
         if (!s21_is_less(buffer1, del) && zero == 0) res.bits[0] |= 1;
@@ -479,5 +491,107 @@ int check_for_zero(s21_decimal num) {
             if (((num.bits[i] >> j) & 1) == 1) res = 0;
         }
     }
+    return res;
+}
+
+int s21_truncate(s21_decimal value, s21_decimal *result) {
+    if (result == NULL) return 1;
+    s21_decimal tmp = value;
+    decrease_scale(&tmp, get_scale(tmp));
+    for (int i = 0; i < 3; i++) result->bits[i] = tmp.bits[i];
+    set_sign(result, get_sign(value));
+    return 0;
+}
+
+int s21_floor(s21_decimal value, s21_decimal *result) {
+    if (result == NULL) return 1;
+    s21_decimal tmp = value;
+    int scale = get_scale(tmp);
+    int sign = get_sign(tmp);
+    decrease_scale(&tmp, scale);
+    if (scale > 0 && sign == -1) {
+        s21_decimal one = {1, 0, 0, 0};
+        set_sign(&one, -1);
+        s21_add(tmp, one, result);
+    } else for (int i = 0; i < 3; i++) result->bits[i] = tmp.bits[i];
+    set_scale(result, 0);
+    return 0;
+}
+
+int s21_from_decimal_to_int(s21_decimal src, int *dst) {
+    if (dst == NULL) return 1;
+    s21_decimal tmp = src;
+    int sign = get_sign(src);
+    set_sign(&tmp, 1);
+    decrease_scale(&tmp, get_scale(src));
+    s21_decimal max_int = {2147483647, 0, 0, 0};
+    int fault = 0;
+    int result = 0;
+    if (s21_is_greater(tmp, max_int)) fault = 1;
+    else result = tmp.bits[0];
+    s21_print_decimal(tmp);
+    if (sign == -1 && !fault) result = -result;
+    if (!fault) *dst = result;
+    return fault;
+}
+
+int s21_from_float_to_decimal(float src, s21_decimal *dst) {
+    if (dst == NULL) return 1;
+    dst->bits[0] = dst->bits[1] = dst->bits[2] = dst->bits[3] = 0;
+    int minus = 0;
+    if (src < 0) {
+        minus = 1;
+        src *= -1;
+    }
+    s21_decimal tmp = *dst;
+    int integer = (int)src;
+    float fractional = src - (float)integer;
+    int tmp_fractional = fractional * pow(10, 7);
+    fractional = fractional * pow(10, 7);
+    tmp.bits[0] = integer;
+    if (tmp_fractional == 0) {
+        dst->bits[0] = integer;
+    }
+    int step = 1;
+    while ((tmp_fractional / 10) > 0) {
+        increase_scale(&tmp, 1);
+        int number = (int)(fractional / pow(10, 7 - step));
+        s21_decimal num = {number, 0, 0, 0};
+        set_scale(&num, step);
+        s21_add(tmp, num, dst);
+        tmp_fractional /= 10;
+        step++;
+    }
+    if (minus) set_sign(dst, -1);
+    return 0;
+}
+
+int s21_from_decimal_to_float(s21_decimal src, float *dst) {
+    if (dst == NULL) return 1;
+    int too_big = 0;
+    s21_decimal tmp = src;
+    int result_scale = 0;
+    if (get_scale(src) > 7) {
+        result_scale = 7;
+        decrease_scale(&tmp, get_scale(tmp) - 7);
+    } else result_scale = get_scale(src);
+    for (int i = 1; i < 3; i++) {
+        for (int j = 0; j < 32; j++) {
+            if ((tmp.bits[i] >> j) & 1) too_big = 1;
+        }
+    }
+    if (!too_big) {
+        float res = 0;
+        if (tmp.bits[0] < 0) res = -tmp.bits[0];
+        else res = tmp.bits[0];
+        if (get_sign(src) < 0) res = -res;
+        *dst = res / pow(10, result_scale);
+    }
+    return too_big;
+}
+
+int get_length_of_int(int num) {
+    int res = 1;
+    while ((num / 10) != 0) { num /= 10; res++; }
     return res;
 }
